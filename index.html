@@ -1,0 +1,222 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Retirement Calculator - Input</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #11998e 0%, #38ef7d 100%);
+            min-height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            padding: 20px;
+        }
+
+        .container {
+            background: white;
+            border-radius: 20px;
+            padding: 50px 40px;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+            max-width: 600px;
+            width: 100%;
+        }
+
+        h1 {
+            font-size: 2.5em;
+            color: #11998e;
+            margin-bottom: 15px;
+            text-align: center;
+        }
+
+        .subtitle {
+            text-align: center;
+            color: #666;
+            margin-bottom: 40px;
+            font-size: 1.1em;
+        }
+
+        .form-group {
+            margin-bottom: 25px;
+        }
+
+        label {
+            display: block;
+            margin-bottom: 8px;
+            color: #333;
+            font-weight: 600;
+            font-size: 1em;
+        }
+
+        input,
+        select {
+            width: 100%;
+            padding: 12px 15px;
+            border: 2px solid #e0e0e0;
+            border-radius: 8px;
+            font-size: 1em;
+            transition: border-color 0.3s;
+            font-family: inherit;
+        }
+
+        input:focus,
+        select:focus {
+            outline: none;
+            border-color: #11998e;
+        }
+
+        .submit-btn {
+            width: 100%;
+            padding: 15px;
+            background: linear-gradient(135deg, #11998e 0%, #38ef7d 100%);
+            color: white;
+            border: none;
+            border-radius: 8px;
+            font-size: 1.2em;
+            font-weight: 600;
+            cursor: pointer;
+            transition: transform 0.2s, box-shadow 0.2s;
+            margin-top: 10px;
+        }
+
+        .submit-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 25px rgba(17, 153, 142, 0.3);
+        }
+
+        .submit-btn:active {
+            transform: translateY(0);
+        }
+
+        .helper-text {
+            font-size: 0.85em;
+            color: #999;
+            margin-top: 5px;
+        }
+
+        .footer {
+            text-align: center;
+            margin-top: 30px;
+            font-size: 0.9em;
+            color: #999;
+        }
+
+        @media (max-width: 768px) {
+            h1 {
+                font-size: 2em;
+            }
+
+            .container {
+                padding: 30px 20px;
+            }
+        }
+    </style>
+</head>
+
+<body>
+    <div class="container">
+        <h1>Retirement Workday Calculator</h1>
+        <p class="subtitle">Enter your retirement details to calculate remaining work days</p>
+
+        <form id="retirementForm">
+            <div class="form-group">
+                <label for="date">Retirement Date</label>
+                <input type="date" id="date" name="date" required>
+                <div class="helper-text">Select your planned retirement date</div>
+            </div>
+
+            <div class="form-group">
+                <label for="vacationdays">Vacation Days per Year</label>
+                <input type="number" id="vacationdays" name="vacationdays" min="0" max="365" required>
+                <div class="helper-text">Number of vacation days you get annually</div>
+            </div>
+
+            <div class="form-group">
+                <label for="country">Country</label>
+                <select id="country" name="country" required>
+                    <option value="Germany">Germany</option>
+                    <option value="USA">United States</option>
+                    <option value="UK">United Kingdom</option>
+                </select>
+                <div class="helper-text">Select your country for public holidays</div>
+            </div>
+
+            <div class="form-group">
+                <label for="state">State/Region</label>
+                <input type="text" id="state" name="state" placeholder="e.g., Hessen, California, England">
+                <div class="helper-text">Enter your state or region (optional for some countries)</div>
+            </div>
+
+            <button type="submit" class="submit-btn">Calculate Work Days</button>
+        </form>
+
+        <div class="footer">
+            Self-contained calculator | No external API calls
+        </div>
+    </div>
+
+    <script>
+        // Set default values
+        document.addEventListener('DOMContentLoaded', function () {
+            // Set default date to 2048-12-01
+            document.getElementById('date').value = '2048-12-01';
+
+            // Set default vacation days
+            document.getElementById('vacationdays').value = '30';
+
+            // Set default state
+            document.getElementById('state').value = 'Hessen';
+
+            // Update state field based on country selection
+            document.getElementById('country').addEventListener('change', function () {
+                const stateField = document.getElementById('state');
+                switch (this.value) {
+                    case 'Germany':
+                        stateField.value = 'Hessen';
+                        stateField.placeholder = 'e.g., Hessen, Bavaria, Berlin';
+                        break;
+                    case 'USA':
+                        stateField.value = 'California';
+                        stateField.placeholder = 'e.g., California, New York, Texas';
+                        break;
+                    case 'UK':
+                        stateField.value = 'England';
+                        stateField.placeholder = 'e.g., England, Scotland, Wales';
+                        break;
+                }
+            });
+        });
+
+        // Handle form submission
+        document.getElementById('retirementForm').addEventListener('submit', function (e) {
+            e.preventDefault();
+
+            const date = document.getElementById('date').value;
+            const vacationdays = document.getElementById('vacationdays').value;
+            const country = document.getElementById('country').value;
+            const state = document.getElementById('state').value;
+
+            // Build URL with parameters
+            const params = new URLSearchParams({
+                date: date,
+                vacationdays: vacationdays,
+                country: country,
+                state: state
+            });
+
+            // Redirect to retirement.html with parameters
+            window.location.href = `retirement.html?${params.toString()}`;
+        });
+    </script>
+</body>
+
+</html>

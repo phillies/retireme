@@ -1,0 +1,464 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Retirement Workday Calculator</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #11998e 0%, #38ef7d 100%);
+            min-height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            padding: 20px;
+        }
+
+        .container {
+            background: white;
+            border-radius: 20px;
+            padding: 60px 40px;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+            max-width: 800px;
+            width: 100%;
+            text-align: center;
+        }
+
+        h1 {
+            font-size: 3.5em;
+            color: #11998e;
+            margin-bottom: 20px;
+            line-height: 1.2;
+        }
+
+        .workdays {
+            font-size: 5em;
+            font-weight: bold;
+            color: #0f7c6e;
+            margin: 30px 0;
+            text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.1);
+        }
+
+        .subtitle {
+            font-size: 1.2em;
+            color: #666;
+            margin-top: 20px;
+            line-height: 1.6;
+        }
+
+        .details {
+            margin-top: 40px;
+            padding: 20px;
+            background: #f8f9fa;
+            border-radius: 10px;
+            font-size: 1em;
+            color: #555;
+        }
+
+        .details-row {
+            display: flex;
+            justify-content: space-between;
+            padding: 10px 0;
+            border-bottom: 1px solid #e0e0e0;
+        }
+
+        .details-row:last-child {
+            border-bottom: none;
+        }
+
+        .details-label {
+            font-weight: 600;
+            color: #333;
+        }
+
+        .details-value {
+            color: #11998e;
+            font-weight: 500;
+        }
+
+        .footer {
+            margin-top: 30px;
+            font-size: 0.9em;
+            color: #999;
+        }
+
+        @media (max-width: 768px) {
+            h1 {
+                font-size: 2em;
+            }
+
+            .workdays {
+                font-size: 3em;
+            }
+
+            .container {
+                padding: 40px 20px;
+            }
+        }
+    </style>
+</head>
+
+<body>
+    <div class="container">
+        <h1>Work days until retirement on <span id="retirementDate"></span>:</h1>
+        <div class="workdays" id="workdaysCount">-</div>
+        <div class="subtitle" id="subtitle">Calculating...</div>
+        <div class="details" id="details"></div>
+        <div class="footer">
+            Retirement Workday Calculator | Self-contained calculation without external APIs
+        </div>
+    </div>
+
+    <script>
+        // Holiday calculation functions (self-contained)
+        const Holidays = {
+            // Easter calculation using Computus algorithm
+            getEasterDate(year) {
+                const a = year % 19;
+                const b = Math.floor(year / 100);
+                const c = year % 100;
+                const d = Math.floor(b / 4);
+                const e = b % 4;
+                const f = Math.floor((b + 8) / 25);
+                const g = Math.floor((b - f + 1) / 3);
+                const h = (19 * a + b - d - g + 15) % 30;
+                const i = Math.floor(c / 4);
+                const k = c % 4;
+                const l = (32 + 2 * e + 2 * i - h - k) % 7;
+                const m = Math.floor((a + 11 * h + 22 * l) / 451);
+                const month = Math.floor((h + l - 7 * m + 114) / 31);
+                const day = ((h + l - 7 * m + 114) % 31) + 1;
+                return new Date(year, month - 1, day);
+            },
+
+            // Germany holidays
+            getGermanyHolidays(year, state) {
+                const holidays = [];
+                const easter = this.getEasterDate(year);
+
+                // Fixed holidays (national)
+                holidays.push(new Date(year, 0, 1));   // New Year's Day
+                holidays.push(new Date(year, 4, 1));   // Labour Day
+                holidays.push(new Date(year, 9, 3));   // German Unity Day
+                holidays.push(new Date(year, 11, 25)); // Christmas Day
+                holidays.push(new Date(year, 11, 26)); // Boxing Day
+
+                // Easter-based holidays
+                const goodFriday = new Date(easter);
+                goodFriday.setDate(easter.getDate() - 2);
+                holidays.push(goodFriday); // Good Friday
+
+                const easterMonday = new Date(easter);
+                easterMonday.setDate(easter.getDate() + 1);
+                holidays.push(easterMonday); // Easter Monday
+
+                const ascension = new Date(easter);
+                ascension.setDate(easter.getDate() + 39);
+                holidays.push(ascension); // Ascension Day
+
+                const whitMonday = new Date(easter);
+                whitMonday.setDate(easter.getDate() + 50);
+                holidays.push(whitMonday); // Whit Monday
+
+                // State-specific holidays
+                if (state) {
+                    const stateLower = state.toLowerCase();
+
+                    // Epiphany (Baden-Württemberg, Bavaria, Saxony-Anhalt)
+                    if (['baden-württemberg', 'bavaria', 'sachsen-anhalt', 'baden-wurttemberg'].includes(stateLower)) {
+                        holidays.push(new Date(year, 0, 6));
+                    }
+
+                    // Corpus Christi (Baden-Württemberg, Bavaria, Hesse, North Rhine-Westphalia, Rhineland-Palatinate, Saarland)
+                    if (['baden-württemberg', 'bavaria', 'hessen', 'hesse', 'north rhine-westphalia',
+                        'rhineland-palatinate', 'saarland', 'baden-wurttemberg'].includes(stateLower)) {
+                        const corpusChristi = new Date(easter);
+                        corpusChristi.setDate(easter.getDate() + 60);
+                        holidays.push(corpusChristi);
+                    }
+
+                    // Assumption Day (Bavaria, Saarland)
+                    if (['bavaria', 'saarland'].includes(stateLower)) {
+                        holidays.push(new Date(year, 7, 15));
+                    }
+
+                    // Reformation Day (Brandenburg, Bremen, Hamburg, Lower Saxony, Mecklenburg-Western Pomerania, Saxony, Saxony-Anhalt, Schleswig-Holstein, Thuringia)
+                    if (['brandenburg', 'bremen', 'hamburg', 'lower saxony', 'mecklenburg-western pomerania',
+                        'mecklenburg-vorpommern', 'sachsen', 'saxony', 'sachsen-anhalt', 'schleswig-holstein',
+                        'thüringen', 'thuringia'].includes(stateLower)) {
+                        holidays.push(new Date(year, 9, 31));
+                    }
+
+                    // All Saints' Day (Baden-Württemberg, Bavaria, North Rhine-Westphalia, Rhineland-Palatinate, Saarland)
+                    if (['baden-württemberg', 'bavaria', 'north rhine-westphalia', 'rhineland-palatinate',
+                        'saarland', 'baden-wurttemberg'].includes(stateLower)) {
+                        holidays.push(new Date(year, 10, 1));
+                    }
+                }
+
+                return holidays;
+            },
+
+            // US holidays
+            getUSHolidays(year, state) {
+                const holidays = [];
+
+                // Fixed holidays
+                holidays.push(new Date(year, 0, 1));   // New Year's Day
+                holidays.push(new Date(year, 6, 4));   // Independence Day
+                holidays.push(new Date(year, 10, 11)); // Veterans Day
+                holidays.push(new Date(year, 11, 25)); // Christmas Day
+
+                // Floating holidays
+                // Martin Luther King Jr. Day (3rd Monday in January)
+                holidays.push(this.getNthWeekdayOfMonth(year, 0, 1, 3));
+
+                // Presidents Day (3rd Monday in February)
+                holidays.push(this.getNthWeekdayOfMonth(year, 1, 1, 3));
+
+                // Memorial Day (last Monday in May)
+                holidays.push(this.getLastWeekdayOfMonth(year, 4, 1));
+
+                // Labor Day (1st Monday in September)
+                holidays.push(this.getNthWeekdayOfMonth(year, 8, 1, 1));
+
+                // Columbus Day (2nd Monday in October)
+                holidays.push(this.getNthWeekdayOfMonth(year, 9, 1, 2));
+
+                // Thanksgiving (4th Thursday in November)
+                holidays.push(this.getNthWeekdayOfMonth(year, 10, 4, 4));
+
+                return holidays;
+            },
+
+            // UK holidays
+            getUKHolidays(year, state) {
+                const holidays = [];
+                const easter = this.getEasterDate(year);
+
+                // Fixed holidays
+                holidays.push(new Date(year, 0, 1));   // New Year's Day
+                holidays.push(new Date(year, 11, 25)); // Christmas Day
+                holidays.push(new Date(year, 11, 26)); // Boxing Day
+
+                // Easter-based
+                const goodFriday = new Date(easter);
+                goodFriday.setDate(easter.getDate() - 2);
+                holidays.push(goodFriday);
+
+                const easterMonday = new Date(easter);
+                easterMonday.setDate(easter.getDate() + 1);
+                holidays.push(easterMonday);
+
+                // Early May bank holiday (1st Monday in May)
+                holidays.push(this.getNthWeekdayOfMonth(year, 4, 1, 1));
+
+                // Spring bank holiday (last Monday in May)
+                holidays.push(this.getLastWeekdayOfMonth(year, 4, 1));
+
+                // Summer bank holiday (last Monday in August)
+                holidays.push(this.getLastWeekdayOfMonth(year, 7, 1));
+
+                return holidays;
+            },
+
+            // Helper function to get nth weekday of month
+            getNthWeekdayOfMonth(year, month, weekday, n) {
+                const firstDay = new Date(year, month, 1);
+                const firstWeekday = firstDay.getDay();
+                const offset = (weekday - firstWeekday + 7) % 7;
+                const date = 1 + offset + (n - 1) * 7;
+                return new Date(year, month, date);
+            },
+
+            // Helper function to get last weekday of month
+            getLastWeekdayOfMonth(year, month, weekday) {
+                const lastDay = new Date(year, month + 1, 0);
+                const lastWeekday = lastDay.getDay();
+                const offset = (lastWeekday - weekday + 7) % 7;
+                return new Date(year, month, lastDay.getDate() - offset);
+            },
+
+            // Main function to get holidays
+            getHolidays(year, country, state) {
+                country = country ? country.toLowerCase() : 'germany';
+
+                switch (country) {
+                    case 'germany':
+                    case 'de':
+                        return this.getGermanyHolidays(year, state);
+                    case 'usa':
+                    case 'us':
+                    case 'united states':
+                        return this.getUSHolidays(year, state);
+                    case 'uk':
+                    case 'united kingdom':
+                    case 'gb':
+                        return this.getUKHolidays(year, state);
+                    default:
+                        return this.getGermanyHolidays(year, state);
+                }
+            },
+
+            // Check if a date is a holiday
+            isHoliday(date, country, state) {
+                const year = date.getFullYear();
+                const holidays = this.getHolidays(year, country, state);
+                const dateStr = date.toDateString();
+                return holidays.some(h => h.toDateString() === dateStr);
+            }
+        };
+
+        // Main calculator
+        class RetirementCalculator {
+            constructor(retirementDate, vacationDays, country, state) {
+                this.retirementDate = retirementDate;
+                this.vacationDays = vacationDays;
+                this.country = country;
+                this.state = state;
+                this.today = new Date();
+                this.today.setHours(0, 0, 0, 0);
+            }
+
+            isWeekend(date) {
+                const day = date.getDay();
+                return day === 0 || day === 6; // Sunday = 0, Saturday = 6
+            }
+
+            calculateWorkdays() {
+                if (this.retirementDate <= this.today) {
+                    return {
+                        workdays: 0,
+                        totalDays: 0,
+                        weekends: 0,
+                        holidays: 0,
+                        vacations: 0,
+                        years: 0
+                    };
+                }
+
+                let workdays = 0;
+                let weekends = 0;
+                let holidays = 0;
+
+                const current = new Date(this.today);
+
+                while (current < this.retirementDate) {
+                    if (this.isWeekend(current)) {
+                        weekends++;
+                    } else if (Holidays.isHoliday(current, this.country, this.state)) {
+                        holidays++;
+                    } else {
+                        workdays++;
+                    }
+                    current.setDate(current.getDate() + 1);
+                }
+
+                // Calculate years remaining
+                const years = (this.retirementDate - this.today) / (1000 * 60 * 60 * 24 * 365.25);
+
+                // Calculate proportional vacation days
+                const vacations = Math.round(years * this.vacationDays);
+
+                // Subtract vacation days from workdays
+                const finalWorkdays = Math.max(0, workdays - vacations);
+
+                const totalDays = Math.floor((this.retirementDate - this.today) / (1000 * 60 * 60 * 24));
+
+                return {
+                    workdays: finalWorkdays,
+                    totalDays: totalDays,
+                    weekends: weekends,
+                    holidays: holidays,
+                    vacations: vacations,
+                    years: years
+                };
+            }
+        }
+
+        // URL parameter parsing
+        function getURLParameters() {
+            const params = new URLSearchParams(window.location.search);
+
+            const dateStr = params.get('date') || '2048-12-01';
+            const vacationDays = parseInt(params.get('vacationdays')) || 30;
+            const country = params.get('country') || 'Germany';
+            const state = params.get('state') || 'Hessen';
+
+            const retirementDate = new Date(dateStr);
+            retirementDate.setHours(0, 0, 0, 0);
+
+            return {
+                retirementDate,
+                vacationDays,
+                country,
+                state
+            };
+        }
+
+        // Format date for display
+        function formatDate(date) {
+            const options = { year: 'numeric', month: 'long', day: 'numeric' };
+            return date.toLocaleDateString('en-US', options);
+        }
+
+        // Initialize and display results
+        function init() {
+            const params = getURLParameters();
+            const calculator = new RetirementCalculator(
+                params.retirementDate,
+                params.vacationDays,
+                params.country,
+                params.state
+            );
+
+            const results = calculator.calculateWorkdays();
+
+            // Update display
+            document.getElementById('retirementDate').textContent = formatDate(params.retirementDate);
+            document.getElementById('workdaysCount').textContent = results.workdays.toLocaleString();
+
+            const stateText = params.state ? `${params.state}, ` : '';
+            document.getElementById('subtitle').textContent =
+                `Based on ${params.vacationDays} vacation days per year in ${stateText}${params.country}.`;
+
+            // Update details
+            const detailsHTML = `
+                <div class="details-row">
+                    <span class="details-label">Total Days:</span>
+                    <span class="details-value">${results.totalDays.toLocaleString()}</span>
+                </div>
+                <div class="details-row">
+                    <span class="details-label">Weekend Days:</span>
+                    <span class="details-value">${results.weekends.toLocaleString()}</span>
+                </div>
+                <div class="details-row">
+                    <span class="details-label">Public Holidays:</span>
+                    <span class="details-value">${results.holidays.toLocaleString()}</span>
+                </div>
+                <div class="details-row">
+                    <span class="details-label">Vacation Days:</span>
+                    <span class="details-value">${results.vacations.toLocaleString()}</span>
+                </div>
+                <div class="details-row">
+                    <span class="details-label">Years Remaining:</span>
+                    <span class="details-value">${results.years.toFixed(2)}</span>
+                </div>
+            `;
+            document.getElementById('details').innerHTML = detailsHTML;
+        }
+
+        // Run on page load
+        init();
+    </script>
+</body>
+
+</html>
